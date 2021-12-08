@@ -8,6 +8,7 @@ package main
 
 import (
 	"bytes"
+	"io/ioutil"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -84,12 +85,25 @@ func main() {
 	defer d.Close()
 
 	// set the handlers
-	d.HandleFunc(snowboy.NewHotword(os.Args[2], 0.5), func(string) {
-		fmt.Println("You said the hotword!")
+	d.HandleFunc(snowboy.NewHotword(os.Args[2], 0.5), func(str string) {
+		fmt.Println("You said the hotword!",str)
 	})
 
-	d.HandleSilenceFunc(1*time.Second, func(string) {
-		fmt.Println("Silence detected.")
+	var buf *bytes.Buffer
+	d.NoHotwordHandleFunc(func(data []byte) {
+		if nil==buf {
+			buf = &bytes.Buffer{}
+		}
+		buf.Write(data)
+		fmt.Println("not hotword!",len(data))
+	})
+
+	d.HandleSilenceFunc(2*time.Second, func(str string) {
+		if nil!=buf {
+			ioutil.WriteFile("temp.wav",buf.Bytes(),os.ModePerm)
+			buf=nil
+		}
+		fmt.Println("Silence detected.",str)
 	})
 
 	// display the detector's expected audio format

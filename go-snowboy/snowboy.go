@@ -30,6 +30,7 @@ type Detector struct {
 	initialized      bool
 	handlers         []handlerKeyword
 	silenceHandler   *handlerKeyword
+	noHotwordHandler func([]byte)
 	modelStr         string
 	sensitivityStr   string
 	silenceThreshold time.Duration
@@ -100,6 +101,12 @@ func (d *Detector) Handle(hotword Hotword, handler Handler) {
 // instead of the Handler interface
 func (d *Detector) HandleFunc(hotword Hotword, handler func(string)) {
 	d.Handle(hotword, handlerFunc(handler))
+}
+
+// Installs a handle for the given not hotword based on the func argument
+// instead of the Handler interface
+func (d *Detector) NoHotwordHandleFunc(handler func([]byte)) {
+	d.noHotwordHandler = handler
 }
 
 // Install a handler for when silence is detected
@@ -223,6 +230,12 @@ func (d *Detector) runDetection(data []byte) snowboyResult {
 	} else {
 		// Reset silence elapse duration because non-silence was detected
 		d.silenceElapsed = 0
+	}
+	// not hotworld
+	if result == snowboyResultNoDetection {
+		if d.noHotwordHandler!=nil {
+			d.noHotwordHandler(data)
+		}
 	}
 	return result
 }
