@@ -25,7 +25,7 @@ type Sound struct {
 }
 
 // Init initializes the Sound's PortAudio stream.
-func (s *Sound) Init() {
+func (s *Sound) Init() error {
 	inputChannels := 1
 	outputChannels := 0
 	sampleRate := 16000
@@ -34,24 +34,23 @@ func (s *Sound) Init() {
 	// initialize the audio recording interface
 	err := portaudio.Initialize()
 	if err != nil {
-		fmt.Errorf("Error initialize audio interface: %s", err)
-		return
+		return fmt.Errorf("Error initialize audio interface: %s", err)
+
 	}
 
 	// open the sound input stream for the microphone
 	stream, err := portaudio.OpenDefaultStream(inputChannels, outputChannels, float64(sampleRate), len(s.data), s.data)
 	if err != nil {
-		fmt.Errorf("Error open default audio stream: %s", err)
-		return
+		return fmt.Errorf("Error open default audio stream: %s", err)
 	}
 
 	err = stream.Start()
 	if err != nil {
-		fmt.Errorf("Error on stream start: %s", err)
-		return
+		return fmt.Errorf("Error on stream start: %s", err)
 	}
 
 	s.stream = stream
+	return nil
 }
 
 // Close closes down the Sound's PortAudio connection.
@@ -76,7 +75,10 @@ func (s *Sound) Read(p []byte) (int, error) {
 func main() {
 	// open the mic
 	mic := &Sound{}
-	mic.Init()
+	if err := mic.Init(); err != nil {
+		fmt.Println("mic.Init error", err)
+		os.Exit(1)
+	}
 	defer mic.Close()
 
 	// open the snowboy detector
@@ -97,5 +99,8 @@ func main() {
 	fmt.Printf("sample rate=%d, num channels=%d, bit depth=%d\n", sr, nc, bd)
 
 	// start detecting using the microphone
-	d.ReadAndDetect(mic)
+	if err := d.ReadAndDetect(mic); err != nil {
+		fmt.Println("ReadAndDetect error", err)
+		os.Exit(1)
+	}
 }
